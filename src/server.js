@@ -30,7 +30,9 @@ const app = express();
 // ========================
 // 🌐 FRONTEND URLs
 // ========================
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://placematefrontend-nsaot90j8-akaashmahes-projects.vercel.app/";
+const FRONTEND_URL =
+  process.env.FRONTEND_URL ||
+  "https://placematefrontend.vercel.app";
 const LOCAL_URL = "http://localhost:3000";
 
 // ========================
@@ -110,13 +112,15 @@ app.get("/auth/google", (req, res) => {
     `&redirect_uri=${encodeURIComponent(process.env.GOOGLE_REDIRECT_URI)}` +
     `&response_type=code` +
     `&scope=email%20profile` +
-    `&access_type=offline` + // 🔥 Ensures refresh tokens and code always returned
-    `&prompt=consent`; // 🔥 Forces Google to always send ?code= back
+    `&access_type=offline` +
+    `&prompt=consent`;
 
-  console.log("🪄 Redirecting to Google with redirect_uri:", process.env.GOOGLE_REDIRECT_URI);
+  console.log(
+    "🪄 Redirecting to Google with redirect_uri:",
+    process.env.GOOGLE_REDIRECT_URI
+  );
   res.redirect(oauthUrl);
 });
-
 
 app.get("/auth/google/callback", async (req, res) => {
   try {
@@ -136,8 +140,10 @@ app.get("/auth/google/callback", async (req, res) => {
 
     const { id, email, name, picture } = response.data;
 
-    // Optional: Restrict domain (e.g., only VIT emails)
-    if (process.env.ALLOWED_DOMAIN && !email.endsWith("@" + process.env.ALLOWED_DOMAIN)) {
+    if (
+      process.env.ALLOWED_DOMAIN &&
+      !email.endsWith("@" + process.env.ALLOWED_DOMAIN)
+    ) {
       return res.redirect(`${FRONTEND_BASE_URL}/invalid-login`);
     }
 
@@ -150,7 +156,6 @@ app.get("/auth/google/callback", async (req, res) => {
 
     const token = generateToken(user);
 
-    // Redirect based on profile completion
     if (isNewUser || !user.profileComplete) {
       res.redirect(`${FRONTEND_BASE_URL}/profile-setup?token=${token}`);
     } else {
@@ -169,7 +174,8 @@ const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: allowedOrigins, // ✅ includes both production + localhost
+    methods: ["GET", "POST"],
     credentials: true,
   },
 });
@@ -179,35 +185,34 @@ const onlineUsers = new Map();
 io.on("connection", (socket) => {
   console.log("⚡ Socket connected:", socket.id);
 
-  // Track user online
   socket.on("userConnected", (userId) => {
     onlineUsers.set(userId, socket.id);
     console.log("User online:", userId);
   });
 
-  // Message handling
   socket.on("sendMessage", async ({ senderId, receiverId, content }) => {
     try {
       const msg = await Message.create({ sender: senderId, receiver: receiverId, content });
       const receiverSocketId = onlineUsers.get(receiverId);
       if (receiverSocketId) io.to(receiverSocketId).emit("receiveMessage", msg);
-      console.log("✅ Message delivered:", msg.content);
+      console.log(`✅ Message sent from ${senderId} → ${receiverId}`);
     } catch (err) {
       console.error("❌ sendMessage error:", err);
     }
   });
 
-  // Handle disconnect
   socket.on("disconnect", () => {
     for (let [userId, sId] of onlineUsers.entries()) {
       if (sId === socket.id) onlineUsers.delete(userId);
     }
-    console.log("Socket disconnected:", socket.id);
+    console.log("🔌 Socket disconnected:", socket.id);
   });
 });
 
 // ========================
 // 🚀 Start Server
 // ========================
-const PORT = process.env.PORT ;
-httpServer.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+const PORT = process.env.PORT || 5000;
+httpServer.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);
