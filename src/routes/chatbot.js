@@ -15,48 +15,39 @@ router.post("/", async (req, res) => {
       return res.status(500).json({ error: "Missing HF_API_KEY in environment" });
     }
 
-    // ✅ New working Hugging Face inference endpoint
-    const response = await fetch(
-      "https://router.huggingface.co/hf-inference/openai/gpt-oss-20b:nebius",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${HF_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: `User: ${message}\nAssistant:`,
-          parameters: {
-            max_new_tokens: 250,
-            temperature: 0.7,
-            return_full_text: false,
-          },
-        }),
-      }
-    );
+    // ✅ Use Hugging Face Router's OpenAI-compatible API
+    const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${HF_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-safeguard-20b:groq", // ✅ your working model
+        messages: [
+          { role: "system", content: "You are PlaceMate's helpful AI assistant." },
+          { role: "user", content: message },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      }),
+    });
 
+    // Handle HTTP errors gracefully
     if (!response.ok) {
       const text = await response.text();
       console.error("❌ HF API Error:", text);
-      return res.status(response.status).json({ error: "Chatbot API request failed" });
+      return res
+        .status(response.status)
+        .json({ error: `Chatbot API request failed: ${text}` });
     }
 
     const data = await response.json();
     console.log("🧠 HF Response:", data);
 
-    let reply = "";
-    if (Array.isArray(data) && data[0]?.generated_text) {
-      reply = data[0].generated_text;
-    } else if (data?.generated_text) {
-      reply = data.generated_text;
-    } else if (data?.choices?.[0]?.message?.content) {
-      reply = data.choices[0].message.content;
-    }
-
-    if (!reply?.trim()) {
-      reply = "⚠️ No reply from model.";
-      console.warn("⚠️ Empty reply:", data);
-    }
+    // ✅ Extract the reply from the model
+    const reply =
+      data?.choices?.[0]?.message?.content?.trim() || "⚠️ No reply from model.";
 
     res.json({ reply });
   } catch (error) {
