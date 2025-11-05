@@ -108,10 +108,15 @@ app.get("/auth/google", (req, res) => {
     "https://accounts.google.com/o/oauth2/v2/auth?" +
     `client_id=${process.env.GOOGLE_CLIENT_ID}` +
     `&redirect_uri=${encodeURIComponent(process.env.GOOGLE_REDIRECT_URI)}` +
-    "&response_type=code&scope=email%20profile";
+    `&response_type=code` +
+    `&scope=email%20profile` +
+    `&access_type=offline` + // 🔥 Ensures refresh tokens and code always returned
+    `&prompt=consent`; // 🔥 Forces Google to always send ?code= back
 
+  console.log("🪄 Redirecting to Google with redirect_uri:", process.env.GOOGLE_REDIRECT_URI);
   res.redirect(oauthUrl);
 });
+
 
 app.get("/auth/google/callback", async (req, res) => {
   try {
