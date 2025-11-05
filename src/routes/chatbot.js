@@ -17,7 +17,7 @@ router.post("/", async (req, res) => {
 
     // ✅ Use your model directly via the Inference API (no more 410)
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/openai/gpt-oss-20b:nebius",
+      "https://router.huggingface.co/v1/chat/completions",
       {
         method: "POST",
         headers: {
