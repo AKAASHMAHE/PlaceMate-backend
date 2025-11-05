@@ -16,7 +16,7 @@ router.post("/", async (req, res) => {
     }
 
     // ✅ Use Hugging Face Inference API (not OpenAI-style)
-    const response = await fetch("https://api-inference.huggingface.co/models/meta-llama/Llama-3-8b-chat-hf", {
+    const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${HF_API_KEY}`,
