@@ -6,7 +6,7 @@ const router = express.Router();
 router.post("/", async (req, res) => {
   try {
     const { message } = req.body;
-    if (!message?.trim()) {
+    if (!message || !message.trim()) {
       return res.status(400).json({ error: "No message provided" });
     }
 
@@ -15,9 +15,9 @@ router.post("/", async (req, res) => {
       return res.status(500).json({ error: "Missing HF_API_KEY in environment" });
     }
 
-    // ✅ Use your model directly via the Inference API (no more 410)
+    // ✅ New working Hugging Face inference endpoint
     const response = await fetch(
-      "https://router.huggingface.co/v1/chat/completions",
+      "https://router.huggingface.co/hf-inference/openai/gpt-oss-20b:nebius",
       {
         method: "POST",
         headers: {
@@ -27,7 +27,7 @@ router.post("/", async (req, res) => {
         body: JSON.stringify({
           inputs: `User: ${message}\nAssistant:`,
           parameters: {
-            max_new_tokens: 300,
+            max_new_tokens: 250,
             temperature: 0.7,
             return_full_text: false,
           },
@@ -47,15 +47,15 @@ router.post("/", async (req, res) => {
     let reply = "";
     if (Array.isArray(data) && data[0]?.generated_text) {
       reply = data[0].generated_text;
+    } else if (data?.generated_text) {
+      reply = data.generated_text;
     } else if (data?.choices?.[0]?.message?.content) {
       reply = data.choices[0].message.content;
-    } else if (typeof data === "string") {
-      reply = data;
     }
 
     if (!reply?.trim()) {
-      console.warn("⚠️ No valid reply from model:", data);
       reply = "⚠️ No reply from model.";
+      console.warn("⚠️ Empty reply:", data);
     }
 
     res.json({ reply });
